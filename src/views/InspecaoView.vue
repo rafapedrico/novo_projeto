@@ -1,7 +1,7 @@
 <template>
-  <div class="app" :class="[temaAtual]">
+  <div class="app" :class="[store.temaAtual]">
     
-    <div v-if="!usuarioLogado" class="full-screen-login-gate animate-fade">
+    <div v-if="!store.usuarioLogado.nome" class="full-screen-login-gate animate-fade">
       <div class="login-card-central">
         <div class="logo">INTELLINK</div>
         <div class="sublogo">INDUSTRIAL MES</div>
@@ -33,11 +33,11 @@
       
       <header class="plano-top-bar">
         <div class="plano-top-left">
-          <div class="user-pill-top">👤 Inspetor Ativo: <strong>{{ operadorAtivo }}</strong></div>
+          <div class="user-pill-top">👤 Inspetor Ativo: <strong>{{ store.usuarioLogado.nome }}</strong></div>
         </div>
         <div class="plano-top-right">
           <button @click="alternarTema" class="btn-theme-toggle-top-plano">
-            <span v-if="temaAtual === 'modo-escuro'">☀️ MODO CLARO</span>
+            <span v-if="store.temaAtual === 'modo-escuro'">☀️ MODO CLARO</span>
             <span v-else>🌙 MODO ESCURO</span>
           </button>
           <button class="btn-yellow" @click="voltarAoDashboard" style="margin-left: 10px;">◀ VOLTAR PARA O DASHBOARD</button>
@@ -195,30 +195,30 @@
           <div class="tab-navigation-header">
             <h1 class="tab-label-ativa massive-headline-title">RELATÓRIO DE INSPEÇÃO EM EXECUÇÃO</h1>
           </div>
-          <small class="breadcrumb-txt massive-subtext">OP: <strong>{{ opDigitada }}</strong> | Chave de Engenharia: <strong>{{ planoDesenho }} (Rev. {{ planoRevisao }})</strong></small>
+            <small class="breadcrumb-txt massive-subtext">OP: <strong>{{ store.opAtiva.numero }}</strong> | Chave de Engenharia: <strong>{{ store.opAtiva.desenho }} (Rev. {{ store.opAtiva.revisao }})</strong></small>
         </div>
 
         <div class="header-right-controls">
           <button @click="alternarTema" class="btn-theme-toggle-top-massive">
-            <span v-if="temaAtual === 'modo-escuro'">☀️ MODO CLARO</span>
+            <span v-if="store.temaAtual === 'modo-escuro'">☀️ MODO CLARO</span>
             <span v-else>🌙 MODO ESCURO</span>
           </button>
-          <span class="status-voice-badge massive-badge-text">Inspetor: <strong>RAFAEL_PEDRICO</strong> <span class="dot-green">●</span></span>
+          <span class="status-voice-badge massive-badge-text">Inspetor: <strong>{{ store.usuarioLogado.nome }}</strong> <span class="dot-green">●</span></span>
         </div>
       </section>
 
       <section class="card grid-info massive-grid-info">
         <div class="info-box-massive">
           <small>ORDEM DE PRODUÇÃO</small>
-          <strong class="text-accent-massive">{{ opDigitada }}</strong>
+          <strong class="text-accent-massive">{{ store.opAtiva.numero }}</strong>
         </div>
         <div class="info-box-massive">
           <small>CLIENTE</small>
-          <span class="truncated-text-massive">ITT Bombas Goulds do Brasil LTDA.</span>
+          <span class="truncated-text-massive">{{ store.opAtiva.cliente }}</span>
         </div>
         <div class="info-box-massive">
           <small>PC / ITEM Nº</small>
-          <span>R90182-9</span>
+          <span>{{ store.opAtiva.pcItem }}</span>
         </div>
         <div class="info-box-massive">
           <small>LOTE TOTAL</small>
@@ -226,7 +226,7 @@
         </div>
         <div class="info-box-massive">
           <small>QUANTIDADE PLANO</small>
-          <span>{{ planoQtdPecas }} pçs</span>
+          <span>{{ store.opAtiva.qtdPecas }} pçs</span>
         </div>
         <div class="info-box-massive">
           <small>PROCESSO ATUAL</small>
@@ -337,7 +337,7 @@
         <button class="btn-light-giant-full" @click="abrirAlerta('Anexos')">📎 ANEXOS OPERACIONAIS</button>
         <button class="btn-light-giant-full" @click="abrirAlerta('Desenho')">📄 VISUALIZAR DESENHO</button>
         <button class="btn-light-giant-full" @click="voltarParaEditarPlano" style="background: rgba(6, 79, 214, 0.08); font-weight: 900; color: #064fd6;">📋 PLANO DE INSPEÇÃO</button>
-        <button class="btn-light-giant-full" @click="$router.push('/rnc')">❌ RNC / NÃO CONFORMIDADES</button>
+        <button class="btn-light-giant-full" @click="abrirRnc">❌ RNC / NÃO CONFORMIDADES</button>
         <button class="btn-green-giant-full" @click="$router.push('/finalizado')">✍️ SALVAR E BAIXAR RELATÓRIO DO LOTE</button>
         <button class="btn-red-giant-full" @click="cancelarInspeçao">✕ CANCELAR</button>
       </section>
@@ -347,13 +347,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { store } from '../store.js'
 
 const router = useRouter()
-const temaAtual = ref('modo-claro')
 
-const usuarioLogado = ref(false)
 const planoConfigurado = ref(false)
 const opLiberada = ref(false)
 const planoHistoricoRecuperado = ref(false)
@@ -366,33 +365,35 @@ const estaArrastando = ref(false)
 let mouseStartX = 0
 let mouseStartY = 0
 
-const operadorAtivo = ref('---')
-const inputUsuario = ref('')
-const inputSenha = ref('')
-const loginStatusMsg = ref('')
-
-const opDigitada = ref('')
-const opMsgValidacao = ref('')
-const opStatusClasse = ref('')
-
-const planoDesenho = ref('Aguardando OP...')
-const planoRevisao = ref('0')
-const planoQtdPecas = ref(150) 
 const instrumentosRastreados = ref('P2470705 / M2030215 / P6030601 / C2660618')
 const estrategiaColeta = ref('horizontal')
+const opMsgValidacao = ref('')
+const opStatusClasse = ref('')
+const loginStatusMsg = ref('')
+const inputUsuario = ref('')
+const inputSenha = ref('')
+const opDigitada = ref('')
 
-const caracteristicas = ref([])
+function enrichCaracteristicasFromStore() {
+  store.caracteristicas.forEach(item => {
+    if (!item.valoresPecas) {
+      item.valoresPecas = {}
+    }
+    item.min = parseFloat((item.valorNominal + item.toleranciaInf).toFixed(3))
+    item.max = parseFloat((item.valorNominal + item.toleranciaSup).toFixed(3))
+    item.nome = item.nome || item.cota
+  })
+}
 
-const listaCotasModeloHistorico = [
-  { nome: '12,65 / 12,70', min: 12.65, max: 12.70, valoresPecas: {} },
-  { nome: 'Ø 49,20 / 49,22', min: 49.20, max: 49.22, valoresPecas: {} },
-  { nome: 'Ø 50,002 / 50,013', min: 50.002, max: 50.013, valoresPecas: {} },
-  { nome: 'Ø 52,34 / 52,36', min: 52.34, max: 52.36, valoresPecas: {} },
-  { nome: 'Ø 54,90 / 54,93', min: 54.90, max: 54.93, valoresPecas: {} },
-  { nome: 'Ø 56,45 / 56,48', min: 56.45, max: 56.48, valoresPecas: {} },
-  { nome: 'Ø 45,004 / 45,014', min: 45.004, max: 45.014, valoresPecas: {} },
-  { nome: '39,70 / 39,75', min: 39.70, max: 39.75, valoresPecas: {} }
-]
+const planoDesenho = computed(() => store.opAtiva.desenho || 'Aguardando OP...')
+const planoRevisao = computed(() => store.opAtiva.revisao || '0')
+const planoQtdPecas = computed(() => store.opAtiva.qtdPecas)
+const usuarioLogado = computed(() => store.usuarioLogado.nome)
+const operadorAtivo = computed(() => store.usuarioLogado.nome || '---')
+const caracteristicas = computed({
+  get: () => store.caracteristicas,
+  set: (val) => { store.caracteristicas = val }
+})
 
 const pecaAtual = ref(1)
 const caracteristicaAtual = ref(1)
@@ -465,7 +466,10 @@ const finalizarArrasto = () => { estaArrastando.value = false }
 
 const login = () => {
   if (inputUsuario.value.trim() === 'RAFAEL_PEDRICO' && inputSenha.value.trim() === '12345') {
-    usuarioLogado.value = true; operadorAtivo.value = 'RAFAEL_PEDRICO'; loginStatusMsg.value = ''
+    store.usuarioLogado.nome = 'RAFAEL_PEDRICO'
+    store.usuarioLogado.perfil = 'Inspetor'
+    store.usuarioLogado.nivel = 1
+    loginStatusMsg.value = ''
   } else {
     loginStatusMsg.value = 'Usuário ou senha incorretos.'
   }
@@ -476,26 +480,44 @@ const voltarAoDashboard = () => {
 }
 
 const logout = () => {
-  usuarioLogado.value = false; planoConfigurado.value = false; opLiberada.value = false
-  opDigitada.value = ''; opMsgValidacao.value = ''; operadorAtivo.value = '---'; medicoes.value = []; resetarInteratividade()
+  store.usuarioLogado.nome = ''
+  store.usuarioLogado.perfil = ''
+  store.usuarioLogado.nivel = ''
+  store.opAtiva.numero = ''
+  store.opAtiva.cliente = ''
+  store.opAtiva.pcItem = ''
+  store.opAtiva.desenho = ''
+  store.opAtiva.revisao = ''
+  store.opAtiva.qtdPecas = 0
+  store.caracteristicas = []
+  planoConfigurado.value = false; opLiberada.value = false
+  opDigitada.value = ''; opMsgValidacao.value = ''; medicoes.value = []; resetarInteratividade()
 }
 
 const validarOrdemProduçao = () => {
   if (opDigitada.value.trim() !== '') {
     opLiberada.value = true; opMsgValidacao.value = '✓ ORDEM DE PRODUÇÃO AUTORIZADA E SINCRONIZADA PELO PCP'; opStatusClasse.value = 'op-sucesso'
-    planoDesenho.value = 'FB-13315 - 2249'; planoRevisao.value = '2'; buscarPlanoPorDesenhoERevisao()
+    buscarPlanoPorDesenhoERevisao()
   } else {
     opLiberada.value = false; opMsgValidacao.value = 'INSPEÇÃO REJEITADA: DIGITE UMA ORDEM ATIVA'; opStatusClasse.value = 'op-erro'
   }
 }
 
 const buscarPlanoPorDesenhoERevisao = () => {
-  caracteristicas.value = JSON.parse(JSON.stringify(listaCotasModeloHistorico)); planoHistoricoRecuperado.value = true
+  enrichCaracteristicasFromStore()
+  store.caracteristicas.forEach(item => {
+    if (!item.valoresPecas) {
+      item.valoresPecas = {}
+    }
+  })
+  planoHistoricoRecuperado.value = true
 }
 
-const adicionarCotaAoPlano = () => { caracteristicas.value.push({ nome: 'Nova Cota Exigida', min: 0.0, max: 0.0, valoresPecas: {} }) }
-const removerCotaDoPlano = (index) => { caracteristicas.value.splice(index, 1) }
-const limparTodasCotas = () => { caracteristicas.value = [] }
+const adicionarCotaAoPlano = () => {
+  store.caracteristicas.push({ id: Date.now(), cota: 'Nova Cota Exigida', nome: 'Nova Cota Exigida', valorNominal: 0, toleranciaSup: 0, toleranciaInf: 0, min: 0.0, max: 0.0, medicao: null, valoresPecas: {} })
+}
+const removerCotaDoPlano = (index) => { store.caracteristicas.splice(index, 1) }
+const limparTodasCotas = () => { store.caracteristicas = [] }
 
 const voltarParaEditarPlano = () => {
   planoConfigurado.value = false
@@ -509,6 +531,16 @@ const confirmarValor = () => {
   originalCota.valoresPecas[pecaAtual.value] = ultimoValor.value.toFixed(3).replace('.', ',')
   const status = ultimoValor.value >= originalCota.min && ultimoValor.value <= originalCota.max ? 'OK' : 'REPR.'
   medicoes.value.unshift({ peca: String(pecaAtual.value).padStart(3, '0'), caracteristica: originalCota.nome, valor: formatarNumero(ultimoValor.value), status })
+  if (status === 'REPR.') {
+    store.rncPendente = {
+      op: store.opAtiva.numero,
+      cota: originalCota.nome,
+      valor: ultimoValor.value,
+      peca: pecaAtual.value,
+      min: originalCota.min,
+      max: originalCota.max
+    }
+  }
   proximaMedicao()
 }
 
@@ -534,7 +566,7 @@ const digitarManual = () => {
   const num = parseFloat(valor.replace(',', '.'))
   if (!isNaN(num)) { 
     ultimoValor.value = num; validarLimitesTolerancia(num)
-    const originalCota = caracteristicas.value[caracteristicaAtual.value - 1]
+    const originalCota = store.caracteristicas[caracteristicaAtual.value - 1]
     if (originalCota) { originalCota.valoresPecas[pecaAtual.value] = num.toFixed(3).replace('.', ',') }
   }
 }
@@ -548,7 +580,7 @@ const iniciarVoz = () => {
     const valor = filtrarTextoParaNumero(texto)
     if (valor !== null) { 
       ultimoValor.value = valor; validarLimitesTolerancia(valor)
-      const originalCota = caracteristicas.value[caracteristicaAtual.value - 1]
+      const originalCota = store.caracteristicas[caracteristicaAtual.value - 1]
       if (originalCota) { originalCota.valoresPecas[pecaAtual.value] = valor.toFixed(3).replace('.', ',') }
     }
   }
@@ -558,9 +590,13 @@ const iniciarVoz = () => {
 const filtrarTextoParaNumero = (texto) => { texto = texto.replace('vírgula', '.').replace('ponto', '.').replace(',', '.'); const match = texto.match(/\d+(\.\d+)?/); return match ? parseFloat(match[0]) : null }
 const validarLimitesTolerancia = (valor) => { const currentCota = caracteristicas.value[caracteristicaAtual.value - 1]; if (!currentCota) return; if (valor >= currentCota.min && valor <= currentCota.max) { alertaMsg.value = '✓ Dentro dos limites.'; alertaClasse.value = 'alerta-ok' } else { alertaMsg.value = '⚠️ Fora de tolerância!'; alertaClasse.value = 'alerta-erro' } }
 const formatarNumero = (val) => val.toFixed(3).replace('.', ',')
-const alternarTema = () => { temaAtual.value = temaAtual.value === 'modo-claro' ? 'modo-escuro' : 'modo-claro' }
+const alternarTema = () => { store.temaAtual = store.temaAtual === 'modo-claro' ? 'modo-escuro' : 'modo-claro' }
 const abrirAlerta = (msg) => alert(`Módulo: ${msg}`)
 const cancelarInspecao = () => { if (confirm('Deseja cancelar?')) logout() }
+
+const abrirRnc = () => {
+  router.push('/rnc')
+}
 
 const desenharDonutGrafico = () => {
   const canvas = document.getElementById('graficoDonutOriginal')
@@ -584,12 +620,12 @@ const desenharDonutGrafico = () => {
     if (temMedida && pecaOk) { ctx.fillStyle = '#16a34a' }
     else if (temMedida && !pecaOk) { ctx.fillStyle = '#dc2626' }
     else { ctx.fillStyle = '#e2e8f0' }
-    ctx.fill(); ctx.lineWidth = 0.5; ctx.strokeStyle = temaAtual.value === 'modo-escuro' ? '#161f30' : '#ffffff'; ctx.stroke()
+    ctx.fill(); ctx.lineWidth = 0.5; ctx.strokeStyle = store.temaAtual === 'modo-escuro' ? '#161f30' : '#ffffff'; ctx.stroke()
   }
-  ctx.beginPath(); ctx.arc(80, 80, 48, 0, Math.PI * 2); ctx.fillStyle = temaAtual.value === 'modo-escuro' ? '#161f30' : '#ffffff'; ctx.fill()
+  ctx.beginPath(); ctx.arc(80, 80, 48, 0, Math.PI * 2); ctx.fillStyle = store.temaAtual === 'modo-escuro' ? '#161f30' : '#ffffff'; ctx.fill()
 }
 
-watch([caracteristicas, temaAtual, planoConfigurado], () => { if (planoConfigurado.value) setTimeout(desenharDonutGrafico, 40) }, { deep: true })
+watch([() => store.caracteristicas, () => store.temaAtual, planoConfigurado], () => { if (planoConfigurado.value) setTimeout(desenharDonutGrafico, 40) }, { deep: true })
 </script>
 
 <style scoped>

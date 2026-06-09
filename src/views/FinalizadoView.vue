@@ -19,7 +19,7 @@
           <div class="user-icon">👤</div>
           <div>
             <small>Inspetor:</small>
-            <strong>RAFAEL_PEDRICO</strong>
+            <strong>{{ store.usuarioLogado.nome || 'RAFAEL_PEDRICO' }}</strong>
           </div>
           <span class="green-dot"></span>
         </div>
@@ -34,19 +34,19 @@
     <section class="info-strip">
       <div>
         <small>ORDEM DE PRODUÇÃO</small>
-        <strong class="blue">12345678</strong>
+        <strong class="blue">{{ store.opAtiva.numero || '12345678' }}</strong>
       </div>
       <div>
         <small>CLIENTE</small>
-        <strong>ITT Bombas Goulds<br />do Brasil LTDA.</strong>
+        <strong>{{ store.opAtiva.cliente || 'ITT Bombas Goulds do Brasil LTDA.' }}</strong>
       </div>
       <div>
         <small>PC / ITEM Nº</small>
-        <strong>R90182-9</strong>
+        <strong>{{ store.opAtiva.pcItem || 'R90182-9' }}</strong>
       </div>
       <div>
         <small>DESENHO / REVISÃO</small>
-        <strong>FB-13315 - 2249<br />Rev. 2</strong>
+        <strong>{{ store.opAtiva.desenho || 'FB-13315 - 2249' }}<br />Rev. {{ store.opAtiva.revisao || '2' }}</strong>
       </div>
       <div>
         <small>LOTE TOTAL</small>
@@ -54,7 +54,7 @@
       </div>
       <div>
         <small>QUANTIDADE PLANO</small>
-        <strong class="blue">150 peças</strong>
+        <strong class="blue">{{ store.opAtiva.qtdPecas || 150 }} peças</strong>
       </div>
       <div>
         <small>PROCESSO</small>
@@ -69,42 +69,42 @@
         <div class="summary-grid">
           <div class="summary-card">
             <small>QUANTIDADE INSPECIONADA</small>
-            <strong class="blue big">150</strong>
+            <strong class="blue big">{{ totalPecas }}</strong>
             <span>peças</span>
             <div class="card-icon blue-soft">📋</div>
           </div>
 
           <div class="summary-card">
             <small>PEÇAS APROVADAS</small>
-            <strong class="green big">142</strong>
+            <strong class="green big">{{ pecasAprovadas }}</strong>
             <span>peças</span>
             <div class="card-icon green-soft">✓</div>
           </div>
 
           <div class="summary-card">
             <small>PEÇAS REPROVADAS</small>
-            <strong class="red big">8</strong>
+            <strong class="red big">{{ pecasReprovadas }}</strong>
             <span>peças</span>
             <div class="card-icon red-soft">✕</div>
           </div>
 
           <div class="summary-card">
             <small>TAXA DE APROVAÇÃO</small>
-            <strong class="green big">94,67%</strong>
+            <strong class="green big">{{ taxaAprovacao }}</strong>
             <span>do lote</span>
             <div class="chart-mini">↗</div>
           </div>
 
           <div class="summary-card">
             <small>TOTAL DE MEDIÇÕES</small>
-            <strong class="dark big">1.200</strong>
+            <strong class="dark big">{{ totalMedicoes }}</strong>
             <span>medições</span>
             <div class="card-icon blue-soft">◔</div>
           </div>
 
           <div class="summary-card">
             <small>COTAS INSPECIONADAS</small>
-            <strong class="dark big">8</strong>
+            <strong class="dark big">{{ totalCotas }}</strong>
             <span>características</span>
             <div class="card-icon purple-soft">📏</div>
           </div>
@@ -128,7 +128,7 @@
           </div>
           <div>
             <small>INSPETOR RESPONSÁVEL</small>
-            <strong>RAFAEL_PEDRICO</strong>
+            <strong>{{ store.usuarioLogado.nome || 'RAFAEL_PEDRICO' }}</strong>
           </div>
           <div>
             <small>STATUS DO LOTE</small>
@@ -149,9 +149,9 @@
         <h2>ANÁLISE DE CONFORMIDADE DO LOTE</h2>
 
         <div class="donut-area">
-          <div class="donut">
+          <div class="donut" :style="{ background: donutGradient }">
             <div class="donut-center">
-              <strong>150</strong>
+              <strong>{{ totalPecas }}</strong>
               <span>peças</span>
             </div>
           </div>
@@ -160,12 +160,12 @@
             <div>
               <span class="dot green-bg"></span>
               <strong>Aprovadas</strong>
-              <p>142 peças (94,67%)</p>
+              <p>{{ pecasAprovadas }} peças ({{ (pecasAprovadas / totalPecas * 100 || 0).toFixed(2) }}%)</p>
             </div>
             <div>
               <span class="dot red-bg"></span>
               <strong>Reprovadas</strong>
-              <p>8 peças (5,33%)</p>
+              <p>{{ pecasReprovadas }} peças ({{ (pecasReprovadas / totalPecas * 100 || 0).toFixed(2) }}%)</p>
             </div>
           </div>
         </div>
@@ -174,7 +174,7 @@
           <div class="trophy">🏆</div>
           <div>
             <h3>DESEMPENHO DO LOTE</h3>
-            <p>O lote atingiu o índice de aprovação de <strong>94,67%</strong>.</p>
+            <p>O lote atingiu o índice de aprovação de <strong>{{ taxaAprovacao }}</strong>.</p>
             <p>Parabéns! O processo está dentro dos padrões de qualidade.</p>
           </div>
         </div>
@@ -199,6 +199,78 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { store } from '../store.js'
+
+const totalPecas = computed(() => store.opAtiva.qtdPecas || 0)
+
+function isPecaAprovada(pecaNum) {
+  const caracteristicas = store.caracteristicas
+  if (!caracteristicas || caracteristicas.length === 0) return false
+  let temMedida = false
+  for (const cota of caracteristicas) {
+    const valStr = cota.valoresPecas?.[pecaNum]
+    if (!valStr) return false
+    temMedida = true
+    const valNum = parseFloat(valStr.replace(',', '.'))
+    if (isNaN(valNum) || valNum < cota.min || valNum > cota.max) return false
+  }
+  return temMedida
+}
+
+function isPecaReprovada(pecaNum) {
+  const caracteristicas = store.caracteristicas
+  if (!caracteristicas || caracteristicas.length === 0) return false
+  for (const cota of caracteristicas) {
+    const valStr = cota.valoresPecas?.[pecaNum]
+    if (valStr) {
+      const valNum = parseFloat(valStr.replace(',', '.'))
+      if (!isNaN(valNum) && (valNum < cota.min || valNum > cota.max)) return true
+    }
+  }
+  return false
+}
+
+const pecasAprovadas = computed(() => {
+  let count = 0
+  for (let p = 1; p <= totalPecas.value; p++) {
+    if (isPecaAprovada(p)) count++
+  }
+  return count
+})
+
+const pecasReprovadas = computed(() => {
+  let count = 0
+  for (let p = 1; p <= totalPecas.value; p++) {
+    if (isPecaReprovada(p)) count++
+  }
+  return count
+})
+
+const totalCotas = computed(() => store.caracteristicas.length || 0)
+
+const totalMedicoes = computed(() => {
+  let count = 0
+  for (const cota of store.caracteristicas) {
+    for (let p = 1; p <= totalPecas.value; p++) {
+      if (cota.valoresPecas?.[p]) count++
+    }
+  }
+  return count
+})
+
+const taxaAprovacao = computed(() => {
+  if (totalPecas.value === 0) return '0,00%'
+  const pct = (pecasAprovadas.value / totalPecas.value) * 100
+  return pct.toFixed(2).replace('.', ',') + '%'
+})
+
+const donutGradient = computed(() => {
+  if (totalPecas.value === 0) return 'conic-gradient(#e2e8f0 0deg 360deg)'
+  const aprovPct = pecasAprovadas.value / totalPecas.value
+  const aprovDeg = aprovPct * 360
+  return `conic-gradient(#0ba832 0deg ${aprovDeg}deg, #dc1f1f ${aprovDeg}deg 360deg)`
+})
 </script>
 
 <style scoped>

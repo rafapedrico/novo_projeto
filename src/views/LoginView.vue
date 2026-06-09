@@ -39,10 +39,9 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useStore } from '../store.js'
+import { store } from '../store.js'
 
 const router = useRouter()
-const { login } = useStore()
 
 const username = ref('')
 const password = ref('')
@@ -50,8 +49,10 @@ const errorMsg = ref('')
 
 function handleLogin() {
   errorMsg.value = ''
-  const success = login(username.value, password.value)
-  if (success) {
+  if (username.value === 'RAFAEL_PEDRICO' && password.value === '12345') {
+    store.usuarioLogado.nome = username.value
+    store.usuarioLogado.perfil = 'Inspetor'
+    store.usuarioLogado.nivel = 1
     router.push('/inspecao')
   } else {
     errorMsg.value = 'Usuário ou senha inválidos. Tente RAFAEL_PEDRICO / 12345'

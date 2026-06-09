@@ -75,7 +75,7 @@
 
             <div class="field">
               <label>PEÇA / LOTE</label>
-              <input v-model="rnc.pecaLote" disabled />
+              <input :value="rncPendente.peca ? String(rncPendente.peca).padStart(3, '0') : rnc.pecaLote" disabled />
             </div>
 
             <div class="field">
@@ -85,7 +85,7 @@
 
             <div class="field">
               <label>PROCESSO</label>
-              <input v-model="rnc.processo" disabled />
+              <input :value="store.opAtiva.status || rnc.processo" disabled />
             </div>
 
             <div class="field locked">
@@ -199,13 +199,13 @@
 
             <div class="measurement-data">
               <label>Característica:</label>
-              <strong>Ø 12,65 ± 0,05</strong>
+              <strong>{{ rncPendente.cota || 'Ø 12,65 ± 0,05' }}</strong>
 
               <label>Valor Medido:</label>
-              <strong class="red">12,72</strong>
+              <strong class="red">{{ rncPendente.valor || '12,72' }}</strong>
 
               <label>Peça:</label>
-              <strong>001 de 100</strong>
+              <strong>{{ rncPendente.peca ? String(rncPendente.peca).padStart(3, '0') + ' de ' + store.opAtiva.qtdPecas : '001 de 100' }}</strong>
             </div>
           </div>
 
@@ -284,6 +284,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { store } from '../store.js'
 
 const router = useRouter()
 
@@ -297,27 +298,31 @@ const PERFIS_SISTEMA = {
   GESTOR: { nivel: 4, role: 'Coordenador da Qualidade' }
 }
 
-const usuarioAtual = ref({
-  nome: 'RAFAEL_PEDRICO',
-  perfil: 'Inspetor',
-  nivel: 1
-})
-
 const loginQualidade = ref({ usuario: '', senha: '' })
+
+const usuarioAtual = computed(() => ({
+  nome: store.usuarioLogado.nome || 'RAFAEL_PEDRICO',
+  perfil: store.usuarioLogado.perfil || 'Inspetor',
+  nivel: store.usuarioLogado.nivel || 1
+}))
+
+const rncPendente = computed(() => store.rncPendente || {})
 
 const rnc = ref({
   numero: 'RNC-000245',
-  dataHora: '16/03/2026 14:35',
-  responsavelAbertura: 'RAFAEL_PEDRICO',
+  dataHora: new Date().toLocaleString('pt-BR'),
+  responsavelAbertura: store.usuarioLogado.nome || 'RAFAEL_PEDRICO',
   setor: 'Qualidade',
   status: 'ABERTA',
-  op: '12345678',
-  pcItem: 'R90182-9',
-  pecaLote: '001',
+  op: store.opAtiva.numero || '12345678',
+  pcItem: store.opAtiva.pcItem || 'R90182-9',
+  pecaLote: store.rncPendente?.peca ? String(store.rncPendente.peca).padStart(3, '0') : '001',
   instrumento: 'Paquímetro Digital 150mm',
-  processo: 'Usinagem CNC',
+  processo: 'INSPEÇÃO',
   maquinaLocal: 'Centro de Usinagem 01',
-  descricao: 'Furo Ø 12,65 medido com 12,72, acima do limite superior de tolerância.',
+  descricao: store.rncPendente
+    ? `Cota "${store.rncPendente.cota}" da peça ${String(store.rncPendente.peca).padStart(3, '0')} medida com ${store.rncPendente.valor} mm, fora do limite (mín: ${store.rncPendente.min} / máx: ${store.rncPendente.max}).`
+    : 'Aguardando dados da inspeção...',
   tipo: 'Dimensional',
   severidade: 'Alta',
   origemProvavel: 'Processo',
@@ -327,8 +332,8 @@ const rnc = ref({
   acaoCorretiva: 'Ajustar ferramenta e parâmetros de usinagem.',
   acaoPreventiva: 'Reforçar checklist de setup e monitorar primeira peça.',
   responsavelAcao: 'Programador CNC',
-  prazo: '2026-03-20',
-  assinaturaAbertura: 'RAFAEL_PEDRICO - 16/03/2026 14:35',
+  prazo: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+  assinaturaAbertura: `${store.usuarioLogado.nome || 'RAFAEL_PEDRICO'} - ${new Date().toLocaleString('pt-BR')}`,
   assinaturaAnalise: null,
   assinaturaExecucao: null,
   assinaturaValidacao: null
@@ -356,7 +361,9 @@ const autenticarSetorRestrito = () => {
   }
 
   if (user === 'QUALIDADE_01') {
-    usuarioAtual.value = { nome: user, perfil: PERFIS_SISTEMA.QUALIDADE.role, nivel: 2 }
+    store.usuarioLogado.nome = user
+    store.usuarioLogado.perfil = PERFIS_SISTEMA.QUALIDADE.role
+    store.usuarioLogado.nivel = 2
     if (rnc.value.status === 'ABERTA') rnc.value.status = 'EM ANÁLISE'
     modalLoginQualidade.value = false
   } else if (user === 'PRODUCAO_01') {
@@ -364,14 +371,18 @@ const autenticarSetorRestrito = () => {
       loginErro.value = 'Produção não pode intervir antes do plano da Qualidade.'
       return
     }
-    usuarioAtual.value = { nome: user, perfil: PERFIS_SISTEMA.PRODUCAO.role, nivel: 3 }
+    store.usuarioLogado.nome = user
+    store.usuarioLogado.perfil = PERFIS_SISTEMA.PRODUCAO.role
+    store.usuarioLogado.nivel = 3
     modalLoginQualidade.value = false
   } else if (user === 'COORD_QUALIDADE') {
     if (rnc.value.status !== 'AGUARDANDO VALIDAÇÃO') {
       loginErro.value = 'O Coordenador só valida após execução da Produção.'
       return
     }
-    usuarioAtual.value = { nome: user, perfil: PERFIS_SISTEMA.GESTOR.role, nivel: 4 }
+    store.usuarioLogado.nome = user
+    store.usuarioLogado.perfil = PERFIS_SISTEMA.GESTOR.role
+    store.usuarioLogado.nivel = 4
     modalLoginQualidade.value = false
   } else {
     loginErro.value = 'Usuário sem permissões industriais elevadas.'
@@ -387,23 +398,31 @@ const executarAvancoFluxo = (acao) => {
     return
   }
 
-  if (usuarioAtual.value.nivel === 2) {
+  if (store.usuarioLogado.nivel === 2) {
     rnc.value.status = 'AÇÃO DEFINIDA'
-    rnc.value.assinaturaAnalise = `${usuarioAtual.value.nome} - ${dataAtual}`
+    rnc.value.assinaturaAnalise = `${store.usuarioLogado.nome} - ${dataAtual}`
+    store.rncStatus = 'AÇÃO DEFINIDA'
+    store.rncAssinaturaAnalise = rnc.value.assinaturaAnalise
     alert('Ações definidas. Posto chaveado para aguardar execução da Produção.')
-  } else if (usuarioAtual.value.nivel === 3) {
+  } else if (store.usuarioLogado.nivel === 3) {
     rnc.value.status = 'AGUARDANDO VALIDAÇÃO'
-    rnc.value.assinaturaExecucao = `${usuarioAtual.value.nome} - ${dataAtual}`
+    rnc.value.assinaturaExecucao = `${store.usuarioLogado.nome} - ${dataAtual}`
+    store.rncStatus = 'AGUARDANDO VALIDAÇÃO'
+    store.rncAssinaturaExecucao = rnc.value.assinaturaExecucao
     alert('Execução apontada. Chaveado para validação do Coordenador.')
-  } else if (usuarioAtual.value.nivel === 4) {
+  } else if (store.usuarioLogado.nivel === 4) {
     rnc.value.status = 'ENCERRADA'
-    rnc.value.assinaturaValidacao = `${usuarioAtual.value.nome} - ${dataAtual}`
+    rnc.value.assinaturaValidacao = `${store.usuarioLogado.nome} - ${dataAtual}`
+    store.rncStatus = 'ENCERRADA'
+    store.rncAssinaturaValidacao = rnc.value.assinaturaValidacao
     alert('RNC validada e Encerrada com sucesso para Auditoria!')
   }
 }
 
 const logoutRestrito = () => {
-  usuarioAtual.value = { nome: 'RAFAEL_PEDRICO', perfil: 'Inspetor', nivel: 1 }
+  store.usuarioLogado.nome = 'RAFAEL_PEDRICO'
+  store.usuarioLogado.perfil = 'Inspetor'
+  store.usuarioLogado.nivel = 1
   alert('Perfil resetado para Inspetor.')
 }
 

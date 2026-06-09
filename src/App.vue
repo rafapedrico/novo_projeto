@@ -1,8 +1,29 @@
 <template>
-  <router-view />
+  <div :class="store.temaAtual">
+    <router-view />
+  </div>
 </template>
 
 <script setup>
+import { watch } from 'vue'
+import { store, salvarStore } from './store.js'
+
+watch(
+  () => ({
+    usuarioLogado: { ...store.usuarioLogado },
+    opAtiva: { ...store.opAtiva },
+    caracteristicas: store.caracteristicas.map(c => ({
+      ...c,
+      valoresPecas: c.valoresPecas ? { ...c.valoresPecas } : {}
+    })),
+    rncPendente: store.rncPendente,
+    temaAtual: store.temaAtual
+  }),
+  () => {
+    salvarStore()
+  },
+  { deep: true }
+)
 </script>
 
 <style>

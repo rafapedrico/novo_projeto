@@ -7,7 +7,7 @@
         <span class="nav-title">Configurador de Blueprint</span>
       </div>
       <div class="nav-right">
-        <span class="nav-user">{{ state.userName }}</span>
+        <span class="nav-user">{{ store.usuarioLogado.nome }}</span>
         <router-link to="/inspecao" class="nav-btn">Inspeção</router-link>
         <router-link to="/rnc" class="nav-btn">RNC</router-link>
         <router-link to="/finalizado" class="nav-btn">Finalizado</router-link>
@@ -108,7 +108,7 @@
             </div>
           </div>
           <div class="params-actions">
-            <button class="action-btn primary">Exportar PDF</button>
+            <button class="action-btn success" @click="handleValidarOP">✓ Validar OP</button>
             <button class="action-btn secondary">Imprimir</button>
           </div>
         </div>
@@ -119,14 +119,107 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { useStore } from '../store.js'
+import { store } from '../store.js'
 
 const router = useRouter()
-const { state, logout } = useStore()
 
 function handleLogout() {
-  logout()
+  store.usuarioLogado.nome = ''
+  store.usuarioLogado.perfil = ''
+  store.usuarioLogado.nivel = ''
   router.push('/')
+}
+
+function handleValidarOP() {
+  store.opAtiva.numero = 'OP-2024-0042'
+  store.opAtiva.cliente = 'ITT Bombas Goulds'
+  store.opAtiva.pcItem = 'DISCO DE FREIO 350MM'
+  store.opAtiva.desenho = 'FB-13315 - 2249'
+  store.opAtiva.revisao = '2'
+  store.opAtiva.qtdPecas = 150
+
+  store.caracteristicas = [
+    {
+      id: 1,
+      cota: 'Diametro Externo',
+      valorNominal: 350,
+      toleranciaSup: 0.1,
+      toleranciaInf: -0.1,
+      medicao: null
+    },
+    {
+      id: 2,
+      cota: 'Diametro Interno',
+      valorNominal: 140,
+      toleranciaSup: 0.05,
+      toleranciaInf: -0.05,
+      medicao: null
+    },
+    {
+      id: 3,
+      cota: 'Espessura',
+      valorNominal: 30,
+      toleranciaSup: 0.1,
+      toleranciaInf: -0.1,
+      medicao: null
+    },
+    {
+      id: 4,
+      cota: 'Furo 1 - Posição',
+      valorNominal: 80,
+      toleranciaSup: 0.2,
+      toleranciaInf: -0.2,
+      medicao: null
+    },
+    {
+      id: 5,
+      cota: 'Furo 2 - Posição',
+      valorNominal: 80,
+      toleranciaSup: 0.2,
+      toleranciaInf: -0.2,
+      medicao: null
+    },
+    {
+      id: 6,
+      cota: 'Furo 3 - Posição',
+      valorNominal: 80,
+      toleranciaSup: 0.2,
+      toleranciaInf: -0.2,
+      medicao: null
+    },
+    {
+      id: 7,
+      cota: 'Furo 4 - Posição',
+      valorNominal: 80,
+      toleranciaSup: 0.2,
+      toleranciaInf: -0.2,
+      medicao: null
+    },
+    {
+      id: 8,
+      cota: 'Furo 5 - Posição',
+      valorNominal: 80,
+      toleranciaSup: 0.2,
+      toleranciaInf: -0.2,
+      medicao: null
+    },
+    {
+      id: 9,
+      cota: 'Raio do Chanfro',
+      valorNominal: 2.5,
+      toleranciaSup: 0.1,
+      toleranciaInf: -0.1,
+      medicao: null
+    },
+    {
+      id: 10,
+      cota: 'Acabamento Superficial Ra',
+      valorNominal: 0.8,
+      toleranciaSup: 0.2,
+      toleranciaInf: -0.2,
+      medicao: null
+    }
+  ]
 }
 </script>
 
@@ -354,6 +447,15 @@ function handleLogout() {
 
 .action-btn.primary:hover {
   background: #2563eb;
+}
+
+.action-btn.success {
+  background: #22c55e;
+  color: white;
+}
+
+.action-btn.success:hover {
+  background: #16a34a;
 }
 
 .action-btn.secondary {
