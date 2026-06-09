@@ -625,6 +625,21 @@ const desenharDonutGrafico = () => {
   ctx.beginPath(); ctx.arc(80, 80, 48, 0, Math.PI * 2); ctx.fillStyle = store.temaAtual === 'modo-escuro' ? '#161f30' : '#ffffff'; ctx.fill()
 }
 
+function onKeydown(e) {
+  if (!planoConfigurado.value) return
+  switch (e.key) {
+    case 'ArrowUp': e.preventDefault(); moverFocoMatriz('cima'); break
+    case 'ArrowDown': e.preventDefault(); moverFocoMatriz('baixo'); break
+    case 'ArrowLeft': e.preventDefault(); moverFocoMatriz('esquerda'); break
+    case 'ArrowRight': e.preventDefault(); moverFocoMatriz('direita'); break
+    case 'Enter': e.preventDefault(); confirmarValor(); break
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', onKeydown)
+}
+
 watch([() => store.caracteristicas, () => store.temaAtual, planoConfigurado], () => { if (planoConfigurado.value) setTimeout(desenharDonutGrafico, 40) }, { deep: true })
 </script>
 

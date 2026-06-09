@@ -181,12 +181,12 @@
       </section>
     </main>
 
-    <section class="actions">
-      <button>📄 BAIXAR RELATÓRIO PDF</button>
-      <button>🖨️ IMPRIMIR RELATÓRIO</button>
+    <section class="actions no-print">
+      <button @click="imprimirRelatorio">📄 BAIXAR RELATÓRIO PDF</button>
+      <button @click="imprimirRelatorio">🖨️ IMPRIMIR RELATÓRIO</button>
       <button class="rnc" @click="$router.push('/rnc')">❌ ABRIR RNC NÃO CONFORMIDADES</button>
       <button>🗄️ VISUALIZAR DADOS DETALHADOS</button>
-      <button>🔄 NOVA INSPEÇÃO OUTRO LOTE</button>
+      <button @click="novoLote">🔄 NOVA INSPEÇÃO OUTRO LOTE</button>
       <button class="dashboard" @click="$router.push('/inspecao')">⌂ VOLTAR PARA DASHBOARD</button>
     </section>
 
@@ -200,7 +200,10 @@
 
 <script setup>
 import { computed } from 'vue'
-import { store } from '../store.js'
+import { useRouter } from 'vue-router'
+import { store, salvarStore } from '../store.js'
+
+const router = useRouter()
 
 const totalPecas = computed(() => store.opAtiva.qtdPecas || 0)
 
@@ -271,6 +274,28 @@ const donutGradient = computed(() => {
   const aprovDeg = aprovPct * 360
   return `conic-gradient(#0ba832 0deg ${aprovDeg}deg, #dc1f1f ${aprovDeg}deg 360deg)`
 })
+
+function imprimirRelatorio() {
+  window.print()
+}
+
+function novoLote() {
+  if (!confirm('Deseja limpar os dados do lote atual e iniciar uma nova inspeção?')) return
+  localStorage.removeItem('intellink_mes_state')
+  store.opAtiva.numero = ''
+  store.opAtiva.cliente = ''
+  store.opAtiva.pcItem = ''
+  store.opAtiva.desenho = ''
+  store.opAtiva.revisao = ''
+  store.opAtiva.qtdPecas = 0
+  store.caracteristicas = []
+  store.rncPendente = null
+  store.rncStatus = ''
+  store.rncAssinaturaAnalise = null
+  store.rncAssinaturaExecucao = null
+  store.rncAssinaturaValidacao = null
+  router.push('/')
+}
 </script>
 
 <style scoped>
@@ -727,6 +752,18 @@ small {
   grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
   padding: 0 38px;
+}
+
+@media print {
+  .no-print { display: none !important; }
+  .app-finalizacao { padding: 0; background: white; }
+  .top-header { border: 1px solid #ccc; border-radius: 0; }
+  .clock-box { background: #031936 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .donut { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .success-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .process-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .green-bg, .red-bg, .blue-soft, .green-soft, .red-soft, .purple-soft { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .footer { border-radius: 0; }
 }
 
 .footer div {
