@@ -199,11 +199,16 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { store, salvarStore } from '../store.js'
+import { store, salvarStore, gerarPayloadExportacao } from '../store.js'
 
 const router = useRouter()
+
+onMounted(() => {
+  // Gera o payload de exportação assim que a tela de finalização é exibida
+  gerarPayloadExportacao()
+})
 
 const totalPecas = computed(() => store.opAtiva.qtdPecas || 0)
 
